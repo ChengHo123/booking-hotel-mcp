@@ -335,4 +335,6 @@ if __name__ == "__main__":
     if not RAPIDAPI_KEY:
         print("[警告] 未設定 RAPIDAPI_KEY，所有住宿查詢功能將返回錯誤。")
     port = int(os.environ.get("PORT", 8000))
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=port)
+    mcp.settings.host = "0.0.0.0"
+    mcp.settings.port = port
+    mcp.run(transport="streamable-http")
