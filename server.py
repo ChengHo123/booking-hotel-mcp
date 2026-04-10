@@ -16,6 +16,7 @@ import os
 from typing import Optional
 import requests
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 # ── 初始化 ────────────────────────────────────────────────────────────────────
 mcp = FastMCP(
@@ -24,6 +25,9 @@ mcp = FastMCP(
         "住宿比價管家，透過 Booking.com 即時查詢並比較旅館價格與評分。"
         "支援按城市、預算、評分篩選，並可並排比較多家旅館。"
     ),
+)
+mcp.settings.transport_security = TransportSecuritySettings(
+    enable_dns_rebinding_protection=False
 )
 
 RAPIDAPI_KEY = os.environ.get("RAPIDAPI_KEY", "")
@@ -331,26 +335,10 @@ def _calc_nights(checkin: str, checkout: str) -> int:
 
 
 # ── 啟動 ──────────────────────────────────────────────────────────────────────
-class HostHeaderMiddleware:
-    """將 Host header 改為 localhost，繞過 FastMCP 的 host 安全檢查。"""
-    def __init__(self, app):
-        self.app = app
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] in ("http", "websocket"):
-            scope["headers"] = [
-                (k, b"localhost") if k == b"host" else (k, v)
-                for k, v in scope.get("headers", [])
-            ]
-        await self.app(scope, receive, send)
-
-
 if __name__ == "__main__":
-    import uvicorn
-
     if not RAPIDAPI_KEY:
         print("[警告] 未設定 RAPIDAPI_KEY，所有住宿查詢功能將返回錯誤。")
-
     port = int(os.environ.get("PORT", 8000))
-    asgi_app = mcp.streamable_http_app()
-    uvicorn.run(HostHeaderMiddleware(asgi_app), host="0.0.0.0", port=port)
+    mcp.settings.host = "0.0.0.0"
+    mcp.settings.port = port
+    mcp.run(transport="streamable-http")
